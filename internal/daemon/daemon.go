@@ -2,6 +2,7 @@ package daemon
 
 import (
 	v1 "clly/apterture/internal/api/v1"
+	"clly/apterture/pkg/storage"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -9,12 +10,14 @@ import (
 
 type Aperture struct {
 	router *mux.Router
+	db storage.StateStorage
 }
 
-type initers func(monitor *Aperture) error
+type initers func(aperture *Aperture) error
 
 func (d *Aperture) init() error {
 	for _, initer := range []initers{
+		initStorage,
 		initMux,
 	} {
 		if err := initer(d); err != nil {
@@ -27,7 +30,12 @@ func (d *Aperture) init() error {
 func initMux(d *Aperture) error {
 	d.router = mux.NewRouter()
 
-	d.router.PathPrefix("/api/v1").Handler(v1.Handler())
+	d.router.PathPrefix("/api/v1").Handler(v1.Handler(d.db))
+	return nil
+}
+
+func initStorage(d *Aperture) error {
+	d.db = storage.NewMemStorage()
 	return nil
 }
 
